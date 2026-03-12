@@ -1,0 +1,6 @@
+"""Marine Litter vs precipitation correlation package initialization."""
+__version__ = "1.0.0"
+__author__ = "Xavier Garcia"
+__email__ = "xgarcia@icm.csic.es"
+__status__ = "Testing"
+PACKAGE_NAME = "MarineLitter"

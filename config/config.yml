@@ -1,0 +1,109 @@
+# Marine Litter Analysis Configuration
+# Quick start with manual mapping (XEMA doesn't have coordinates)
+
+# Data paths
+data:
+  litter_csv: "data/raw/AbundanciaBiomassa_ML_ND_19-23.csv"
+  precipitation_csv: "data/raw/Dades_meteorol_giques_de_la_XEMA_20241024.csv"
+  xema_stations_csv: "data/raw/XEMA_stations_modified.csv"
+
+# Temporal settings
+temporal:
+  cadence: "W"  # Weekly aggregation
+
+# Port-Station mapping
+# Since XEMA data doesn't include station coordinates, we need manual mapping
+# This is a STARTER mapping - adjust based on which stations are actually near each port
+mapping:
+  max_distance_km: 50  # Not used with manual mapping, but keep for reference
+
+  # Manual port → XEMA station mapping
+  # These are INITIAL GUESSES - you should verify and adjust!
+  # Strategy: Assign nearby alphabetically-close station codes
+  # manual_overrides:
+  #   # Southern coast
+  #   63100: ["C6", "C7", "C8", "C9"]      # La Ràpita (southernmost)
+  #   63210: ["CC", "CD", "CE"]            # L'Ametlla de Mar
+  #   63300: ["CG", "CI", "CJ"]            # Tarragona
+  #
+  #   # Central coast (Barcelona area)
+  #   64100: ["CL", "CP", "CQ"]            # Vilanova i la Geltrú
+  #   64200: ["CR", "CT", "CU", "CW"]      # Barcelona (major city, more stations)
+  #   64300: ["CY", "D1", "D2"]            # Arenys de Mar
+  #
+  #   # Northern coast (Costa Brava)
+  #   64410: ["D3", "D4", "D5"]            # Blanes
+  #   64500: ["D6", "D7", "D8"]            # Palamós
+  #   64600: ["D9", "DB", "DF"]            # Roses (northernmost)
+
+# Feature engineering
+features:
+  rolling_windows: [4, 6, 8, 10, 12]  # 2, 4, 8 weeks (start smaller for speed)
+  lag_min: 0
+  lag_max: 52      # Up to 26 weeks (6 months) - faster than 52
+  lag_step: 1
+
+# Correlation analysis
+correlation:
+  method: "spearman"
+  alpha: 0.05
+  multiple_testing_correction: "fdr_bh"
+
+# Modeling
+modeling:
+  family: "nb"
+  response_variable: "litter_count"  # or "litter_weight_kg"
+  use_effort_offset: true  # KEEP TRUE - you have effort data
+  include_seasonality: true
+  include_port_effects: true
+  cv_folds: 5
+#modeling:
+#  family: 'gam'
+#  use_offset: true
+#  offset_column: 'area_swept' # This name matches the mapping above
+#  smooth_features:
+#    - 'precip_mm_lag_7'
+#    - 'discharge_m3s_lag_7'
+#    - 'flux_lagrangian'
+
+  ### Why Effort Offset is Critical
+  #
+  #**Without effort offset:**
+  #- "Port A has 100 litter items"
+  #- But was that from 1 hour or 10 hours of trawling?
+  #- Can't compare ports fairly!
+  #
+  #**With effort offset:**
+  #- "Port A has 100 items / 5 hours = 20 items per hour"
+  #- Now I'm modeling **litter rate**, not absolute counts
+  #- Accounts for varying sampling effort
+  #- Makes correlations with precipitation meaningful
+
+# Dispersion model comparison (optional)
+dispersion:
+  enabled: false  # Set to true if you have Lagrangian particle tracking data
+  # dispersion_csv: "data/raw/dispersion_output.csv"
+
+# Output paths
+outputs:
+  figures: "outputs/figures"
+  tables: "outputs/tables"
+  models: "outputs/models"
+
+# Logging
+logging:
+  level: "INFO"
+  file: "outputs/marine_litter.log"
+
+# Random seed
+random_seed: 42
+
+# IMPORTANT NOTES:
+# 1. The station mappings above are GUESSES based on alphabetical order
+# 2. You SHOULD verify which XEMA stations are actually near each port
+# 3. To find correct stations, you can:
+#    - Look up XEMA station locations at: https://www.meteo.cat/
+#    - Use geographic knowledge (which rivers/areas are near each port)
+#    - Start with a few stations per port and see which show strongest correlations
+# 4. The pipeline will compute correlations for all listed stations
+# 5. After first run, check correlation results to see which stations work best
